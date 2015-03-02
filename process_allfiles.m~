@@ -1,0 +1,177 @@
+%get all images
+
+clear all;
+
+
+%get all filenames in directory 
+mydir = 'scans';
+filelist = getAllFileNames(mydir);
+
+
+%parameters for all files
+doplot = true;
+storeM = 8;%size of subimages stored before cropping
+M = 16; %resized M x M subimages after cropping
+c =0;%amount to crop from EACH edge
+mytol = 252; %tolerance for mean value of image
+
+bigX = cell(4,1);
+
+%loop thruogh all file names
+for ii = 1:numel(filelist)
+    filename = filelist{ii};
+    
+    %extract subimages
+    process_image;
+    % pause(0.1);
+    %see if there are x's
+
+    
+    if size(X,1)==232
+    bigX{ii} = X;
+    end
+
+    %information about the ith image is in the ith row of X
+end
+
+
+%% LOAD DATA
+
+load images_stef_scans;
+load images_scans;
+Yscans = ~Yscans;
+XX_old = [XXscans;XXstef_scans];
+Y = [Yscans;Ystef_scans];
+
+% XX_old = XXstef_scans;
+% Y = Ystef_scans;
+
+XX = XX_old;
+% XX = cell2mat(bigX);
+
+Y = ~Y;
+
+%% DO SOME NORMALIZATION
+
+%Normalize XX
+[bigM,bigN] = size(XX);
+
+mu = mean(XX);
+sigma = std(XX);
+
+%stand deviation of a column might be 0!, remove these columns
+sigma_bool = sigma==0;
+
+%save entries 
+xx_store = XX(:,sigma_bool);
+%delete em from data
+XX(:,sigma_bool) = [];
+
+%delete entries from sigma and mu as well
+sigma(sigma_bool) = [];
+mu(sigma_bool) = [];
+
+%normalize
+% XX = (XX - repmat(mu,bigM,1))./(repmat(sigma,bigM,1));
+
+%add a column of ones to XX
+XX = 1 - XX/255;
+XX = [ones(size(XX,1),1) XX ];
+
+%scale XX by 255, so values go from 0 to 1
+% XX = [ones(size(XX,1),1) XX ];
+
+
+%HERE 0 = X and 1 = NO X
+% Y = ones(232*4,1);
+% Y(1:232,1) =0 ;
+% Y(end-232+1:end,1) = 0;
+% Y=~Y;
+
+
+
+
+%randomly permute stuff
+% rand_perm = randperm(size(XX,1));
+
+% XX = XX(rand_perm,:);
+% Y = Y(rand_perm,:);
+
+%% use ridge regression
+%XX probably doesn't have full rank (least squares didn't work)
+
+lambda = 100;
+
+%penalty matrix
+penalty_mat = lambda*eye(size(XX,2));
+%don't penalize \beta_0
+% penalty_mat(1,1) = 0;
+
+beta  = (XX'*XX + penalty_mat) \ (XX'*Y);
+
+yhat = XX*beta;
+Yhat = (yhat>=1/2);
+
+sum(Yhat ~= Y)
+
+isayso = 1;%plotting boolean
+if isayso
+    beta_s = beta(2:end);
+    beta_all = zeros(storeM^2,1);
+    beta_all(~sigma_bool) = beta_s;
+    beta_im = reshape(beta_all,[storeM storeM]);
+    
+    surf(abs(beta_im));colorbar;colormap hot;
+    
+%     contourf(abs(beta_im));colorbar;colormap hot;
+end
+    
+
+
+
+%% use neural network on all data
+
+%make target data into two row matrix
+T = zeros(2,size(Y,1));
+T(2,Y==1) = 1;
+T(1,Y==0) = 1;
+
+hidden_units = 2;
+net = patternnet(hidden_units);
+[net,tr] = train(net,XX',T);
+
+%get classification
+classes = net(XX');
+
+netx = vec2ind(classes) - 1;
+
+%get number of misclassifications
+sum(Y~=netx')
+
+%% use feed forward
+load images_stef_scans;
+load images_scans;
+Yscans = ~Yscans;
+XX = [XXscans;XXstef_scans];
+Y = [Yscans;Ystef_scans];
+
+
+
+T = zeros(2,size(Y,1));
+T(2,Y==1) = 1;
+T(1,Y==0) = 1;
+
+hidden_units = 2;
+netff = feedforwardnet(hidden_units);
+[netff,tr] = train(netff,XX',T);
+
+%get classification
+classes = netff(XX');
+
+netx = vec2ind(classes) - 1;
+
+%get number of misclassifications
+sum(Y~=netx')
+
+
+    

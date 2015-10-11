@@ -1,6 +1,6 @@
 # Ski_Form
 
-Project written in MATLAB to identify location of Xs in scans of ski forms used at Mt. Hood. Uses a combination of image analysis and machine learning to turn paper records into computer records. 
+Project written in MATLAB to identify location of Xs in scans of ski condition forms used at Mt. Hood. Uses a combination of image analysis and machine learning to turn paper records into computer records. 
 
 process_allfiles.m
 	This script loads images from scans/ and uses image processing to extract subimages. These are then saved to files images_scans.mat & images_stef_scans.mat.
